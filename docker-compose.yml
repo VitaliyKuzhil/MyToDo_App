@@ -1,0 +1,100 @@
+version: '1.0'
+
+services:
+
+  # TASK APP
+  task_app:
+    build: .
+    volumes:
+      - .:/django_app
+    ports:
+      - "8000:8000"
+    restart: always
+    image: task_app:django
+    container_name: django_todo_app
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      - DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+      - CELERY_BROKER=redis://redis:6379/0
+      - CELERY_BACKEND=redis://redis:6379/0
+    depends_on:
+      - database
+      - redis
+
+
+  # POSTGRES DB
+  database:
+    image: postgres:13.4
+    volumes:
+      - ./database:/var/lib/postgresql/data
+    restart: always
+    environment:
+      - POSTGRES_HOST=database
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=todo_database
+    container_name: postgres_todo_db
+
+
+  # POSTGRES ADMIN
+  pgadmin:
+    image: dpage/pgadmin4:6.12
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_LISTEN_PORT: 5050
+    ports:
+      - "5050:5050"
+    container_name: postgres_admin
+    volumes:
+      - ./pgadmin:/var/lib/pgadmin
+    restart: always
+    depends_on:
+      - database
+      - task_app
+      - redis
+
+
+  # REDIS TASK
+  redis:
+    image: redis:alpine
+    container_name: redis_todo
+
+
+  # CELERY
+  celery:
+    image: task_app:django
+    command: celery --app django_todo_project worker --loglevel INFO
+    restart: always
+    container_name: celery_todo
+    volumes:
+      - .:/django_app
+    environment:
+      - DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+      - CELERY_BROKER=redis://redis:6379/0
+      - CELERY_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - database
+      - task_app
+
+
+  # CELERY BEAT
+  celery-beat:
+    image: task_app:django
+    command: celery --app django_todo_project beat --loglevel INFO
+    restart: always
+    container_name: celery-beat_todo
+    volumes:
+      - .:/django_app
+    environment:
+      - DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+      - CELERY_BROKER=redis://redis:6379/0
+      - CELERY_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
+      - database
+      - task_app

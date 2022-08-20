@@ -11,6 +11,10 @@ venv/
 **/.DS_Store
 **/__pycache__
 
+# Database
+/database/
+/pgadmin/
+
 # Backup files #
 *.bak
 
@@ -102,7 +106,7 @@ celerybeat-schedule.*
 .env
 .venv
 env/
-venv/
+/venv/
 ENV/
 env.bak/
 venv.bak/
